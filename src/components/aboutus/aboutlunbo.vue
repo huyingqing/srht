@@ -1,0 +1,315 @@
+
+<template>
+  <div class="app-container">
+    <div class="xianshi">
+      <!-- 轮播图 -->
+      <div class="anniu">
+        <el-row>
+          <el-button @click="anniu" type="primary" plain>添加分类</el-button>
+        </el-row>
+      </div>
+      <!-- 列表 -->
+      <div>
+        <el-table
+          :data="
+            tableData.filter(
+              data =>
+                !search ||
+                data.name.toLowerCase().includes(search.toLowerCase())
+            )
+          "
+          style="width: 100%"
+        >
+          <el-table-column label="id" prop="ids"> </el-table-column>
+          <el-table-column label="图片">
+            <template slot-scope="scope"
+              ><img class="list-img" v-lazy="scope.row.paths" alt=""
+            /></template>
+          </el-table-column>
+          <el-table-column label="序列号" prop="serial_numbers">
+          </el-table-column>
+          <el-table-column align="right">
+            <template slot="header">
+              <el-input
+                v-model="search"
+                size="mini"
+                placeholder="输入关键字搜索"
+              />
+            </template>
+            <template slot-scope="scope">
+              <el-button
+                size="mini"
+                @click="handleEdit(scope.$index, scope.row)"
+                >修改</el-button
+              >
+              <el-button
+                size="mini"
+                type="danger"
+                @click.native.prevent="deleteRow(scope.$index, scope.row)"
+                >删除</el-button
+              >
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <!-- <div class="fenye">
+        <el-pagination
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :current-page="currentPage"
+          :page-sizes="[10, 20, 30, 40]"
+          :page-size="10"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="40"
+        >
+        </el-pagination>
+      </div> -->
+    </div>
+    <!-- 点击插入 -->
+    <div class="tanchuang" v-show="tanchuang">
+      <div class="biaoge">
+        <!-- 图片上传 -->
+        <div>
+          <div>
+            <p class="p-size">图片尺寸(1920*518)</p>
+            <el-upload
+              :action="`${baseURL}/setGroupImg`"
+              list-type="picture-card"
+              :on-preview="handlePictureCardPreview"
+              :on-remove="handleRemove"
+              :data="{ tag }"
+              ref="upload"
+              :on-error="handerror"
+              :on-success="handsuccess"
+              :before-upload="beforeAvatarUpload"
+              accept="image/*"
+            >
+              <i class="el-icon-plus"></i>
+            </el-upload>
+
+            <el-dialog :visible.sync="dialogVisible">
+              <img width="100%" v-lazy="dialogImageUrl" alt="" />
+            </el-dialog>
+          </div>
+
+          <div class="botton">
+            <el-button type="primary" @click="onSubmit">完成</el-button
+            ><el-button @click="cancle">取消</el-button>
+          </div>
+        </div>
+      </div>
+    </div>
+        <!-- 点击修改序列号 -->
+    <div v-show="showupdate" class="tanchuangs">
+      <div class="biaoge">
+        <p class="p-size">修改显示顺序</p>
+        <div class="xiugai-shuru">
+          <el-input placeholder="请输入内容" v-model="xuhao" clearable>
+          </el-input>
+        </div>
+        <div class="botton">
+          <el-button type="primary" @click="xiugai()">完成</el-button
+          ><el-button @click="cancle">取消</el-button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      dialogImageUrl: "",
+      dialogVisible: false,
+      tag: 8,
+      baseURL: this.Globle.baseURL,
+      tableData: [],
+      search: "",
+      labelPosition: "left",
+      tanchuang: false,
+      showupdate: false,
+       xuhao:"",
+      idsupdat: "",
+      numupdat: ""
+    };
+  },
+  methods: {
+    handleEdit(index, row) {
+      // console.log(row.ids);
+      // console.log(row.serial_numbers);
+      this.idsupdat = row.ids;
+      this.showupdate = true;
+    },
+    deleteRow(index, row) {
+      const id = row.ids;
+      console.log(id);
+      console.log(row);
+      this.axios.post(this.Globle.baseURL+"deleteImg", { ids: id }).then(res => {
+        console.log(res);
+        if (res.status == 200) {
+          this.listinfo();
+          this.$message({
+            message: "删除成功",
+            top: 30,
+            type: "success"
+          });
+        }
+      });
+    },
+    onSubmit() {
+      this.tanchuang = false;
+      this.$refs.upload.clearFiles();
+      this.listinfo()
+    },
+    anniu() {
+      this.tanchuang = true;
+    },
+    handsuccess() {
+      this.$message({
+        message: "创建成功",
+        top: 30,
+        type: "success"
+      });
+    },
+    cancle() {
+      if (this.tanchuang == true) {
+        this.tanchuang = false;
+      }
+    },
+    handleSizeChange(val) {
+      console.log(`每页 ${val} 条`);
+    },
+    handleCurrentChange(val) {
+      console.log(`当前页: ${val}`);
+    },
+
+    handleRemove(file, fileList) {
+      console.log(file, fileList);
+    },
+    handlePictureCardPreview(file) {
+      this.dialogImageUrl = file.url;
+      this.dialogVisible = true;
+    },
+    handerror() {
+      this.$message({
+        message: "上传失败，请重新上传",
+        top: 300,
+        type: "error"
+      });
+    },
+    beforeAvatarUpload(file) {
+      const isJpg = /image\/(png|jpe?g|gif)$/.test(file.type);
+      // const isLt2M = file.size / 720 / 1440 < 2;
+      if (!isJpg) {
+        this.$message.error("上传图片只能是 JPG/PNG 格式!");
+      }
+
+      return isJpg ;
+    },
+    // 获取列表信息
+    listinfo() {
+      this.axios.get(this.Globle.baseURL+"getGroup?tag=8").then(res => {
+        // console.log(res)
+        this.tableData = res.data.datas;
+        // console.log(this.tableData);
+        let arr = this.tableData;
+        let banners = [];
+        for (let i = 0; i < arr.length; i++) {
+          // console.log(i, arr[i]);
+          let path = `${this.Globle.baseURLs}` + arr[i].path;
+          // console.log(path);
+          let id = arr[i].id;
+          // console.log(id);
+          let serial_number = arr[i].serial_number;
+          // let ban = { paths: path, ids: id };
+          // console.log(ban);
+          banners.push({ paths: path, ids: id, serial_numbers: serial_number });
+          // console.log(banners);
+        }
+        this.tableData = banners;
+        // console.log(this.tableData);
+      });
+    },
+      // 修改图片
+    xiugai() {
+      this.axios
+        .post(this.Globle.baseURL+"setSerialNumber", {
+          ids: this.idsupdat,
+          nums: this.xuhao
+        })
+        .then(res => {
+          this.listinfo();
+        });
+        this.showupdate = false;
+    }
+  },
+  mounted() {
+    this.listinfo();
+  }
+};
+</script>
+<style lang='scss' scoped>
+.lunbo-one {
+  margin-top: 40px;
+}
+.app-container,
+.el-upload {
+  width: 100%;
+  min-width: 756px;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+  height: 100%;
+}
+.anniu {
+  text-align: left;
+  padding-top: 10px;
+  padding-bottom: 20px;
+}
+.lunbo-one-title {
+  padding: 20px;
+  font-size: 20px;
+  font-family: "Courier New", Courier, monospace;
+  font-weight: 600;
+}
+
+.biaoge {
+  position: fixed;
+  z-index: 1000;
+  width: 50%;
+  min-width: 750px;
+  margin: 0 auto;
+  border: 1px solid #e8e8e8;
+  box-shadow: 10px 10px 5px 5px #9999;
+  padding: 35px 10px;
+  background-color: #ffffff;
+  top: 300px;
+  left: 500px;
+  text-align: left;
+}
+.el-form-item__label {
+  width: 150px;
+}
+.fenye {
+  margin-top: 20px;
+}
+.botton {
+  margin-top: 20px;
+}
+.el-table__body-wrapper {
+  text-align: center;
+}
+.list-img {
+  width: 150px;
+  height: 50px;
+}
+.p-size {
+  margin-bottom: 15px;
+}
+.xiugai-shuru {
+  width: 200px;
+}
+</style>
